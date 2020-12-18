@@ -21,7 +21,7 @@ NON_MATCHING ?= 0
 TARGET_N64 ?= 0
 # Build for Emscripten/WebGL
 TARGET_WEB ?= 0
-# Build for OpenDingux
+# Build for RG351
 TARGET_OD ?= 1
 # Use profiler or not
 USE_PROFILER ?= 0
@@ -270,7 +270,7 @@ else
 ifeq ($(TARGET_WEB),1)
   OPT_FLAGS := -O2 -g4 --source-map-base http://localhost:8080/
 else
-  OPT_FLAGS := -O2
+  # OPT_FLAGS := -O2
 endif
 endif
 
@@ -449,10 +449,10 @@ OBJCOPY := objcopy
 PYTHON := python3
 
 ifeq ($(TARGET_OD),1)
-  OD_TOOLCHAIN ?= /opt/gcw0-toolchain/
-  CC := $(OD_TOOLCHAIN)bin/mipsel-linux-gcc
-  CXX := $(OD_TOOLCHAIN)bin/mipsel-linux-g++
-  LD := $(OD_TOOLCHAIN)bin/mipsel-linux-gcc
+  OD_TOOLCHAIN ?= /opt/toolchain/
+  CC := $(OD_TOOLCHAIN)bin/aarch64-libreelec-linux-gnueabi-gcc -g -O0
+  CXX := $(OD_TOOLCHAIN)bin/aarch64-libreelec-linux-gnueabi-g++
+  LD := $(OD_TOOLCHAIN)bin/aarch64-libreelec-linux-gnueabi-gcc -g -O0
 endif
 
 # Platform-specific compiler and linker flags
@@ -473,7 +473,7 @@ ifeq ($(TARGET_WEB),1)
   PLATFORM_LDFLAGS := -lm -no-pie -s TOTAL_MEMORY=20MB -g4 --source-map-base http://localhost:8080/ -s "EXTRA_EXPORTED_RUNTIME_METHODS=['callMain']"
 endif
 
-PLATFORM_CFLAGS += -DNO_SEGMENTED_MEMORY -DUSE_SYSTEM_MALLOC
+PLATFORM_CFLAGS += -DUSE_EXT_RAM -DNO_SEGMENTED_MEMORY -DUSE_SYSTEM_MALLOC
 
 # Compiler and linker flags for graphics backend
 ifeq ($(ENABLE_OPENGL),1)
@@ -488,9 +488,9 @@ ifeq ($(ENABLE_OPENGL),1)
     GFX_LDFLAGS += -lGL $(shell sdl2-config --libs) -lX11 -lXrandr
   endif
   ifeq ($(TARGET_OD),1)
-    GFX_CFLAGS += $(shell $(OD_TOOLCHAIN)mipsel-gcw0-linux-uclibc/sysroot/usr/bin/sdl2-config --cflags)
+    GFX_CFLAGS += $(shell $(OD_TOOLCHAIN)aarch64-libreelec-linux-gnueabi/sysroot/usr/bin/sdl2-config --cflags)
     GFX_CFLAGS += -DUSE_TEXTURE_ATLAS -DUSE_SDL=2 -DUSE_GLES2
-    GFX_LDFLAGS += $(shell $(OD_TOOLCHAIN)mipsel-gcw0-linux-uclibc/sysroot/usr/bin/sdl2-config --libs) -lGLESv2
+    GFX_LDFLAGS += $(shell $(OD_TOOLCHAIN)aarch64-libreelec-linux-gnueabi/sysroot/usr/bin/sdl2-config --libs) -lGLESv2
   endif
   ifeq ($(TARGET_WEB),1)
     GFX_CFLAGS  += -s USE_SDL=2
@@ -512,7 +512,7 @@ CC_CHECK := $(CC) -fsyntax-only -fsigned-char $(INCLUDE_CFLAGS) -Wall -Wextra -W
 ifeq ($(TARGET_OD),0)
 CFLAGS := $(OPT_FLAGS) $(INCLUDE_CFLAGS) -D_LANGUAGE_C $(VERSION_CFLAGS) $(MATCH_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) $(GRUCODE_CFLAGS) -fno-strict-aliasing -fwrapv -march=native
 else
-CFLAGS := $(OPT_FLAGS) $(INCLUDE_CFLAGS) -D_LANGUAGE_C $(VERSION_CFLAGS) $(MATCH_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) $(GRUCODE_CFLAGS) -fno-strict-aliasing -fwrapv
+CFLAGS := $(OPT_FLAGS) $(INCLUDE_CFLAGS) -D_LANGUAGE_C $(VERSION_CFLAGS) $(MATCH_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) $(GRUCODE_CFLAGS) -fno-strict-aliasing -fwrapv -march=armv8-a -mtune=cortex-a35
 endif
 
 ifeq ($(USE_PROFILER),1)
@@ -637,6 +637,7 @@ $(BUILD_DIR)/include/text_strings.h: $(BUILD_DIR)/include/text_menu_strings.h
 $(BUILD_DIR)/src/menu/file_select.o: $(BUILD_DIR)/include/text_strings.h
 $(BUILD_DIR)/src/menu/star_select.o: $(BUILD_DIR)/include/text_strings.h
 $(BUILD_DIR)/src/game/ingame_menu.o: $(BUILD_DIR)/include/text_strings.h
+$(BUILD_DIR)/src/game/camera.o: $(BUILD_DIR)/include/text_strings.h
 
 ################################################################
 # TEXTURE GENERATION                                           #
