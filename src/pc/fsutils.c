@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if defined(TARGET_OD) || defined(TARGET_LINUX)
+#if defined(TARGET_RG351) || defined(TARGET_LINUX)
 #include <sys/stat.h>
 #include <errno.h>
 #endif
@@ -9,9 +9,9 @@
 
 FILE *fopen_home(const char *filename, const char *mode)
 {
-#if defined(TARGET_OD) || defined(TARGET_LINUX)
+#if defined(TARGET_RG351) || defined(TARGET_LINUX)
     static char fnamepath[2048];
-    const char *path = getenv("HOME");
+    const char *path = "/storage/roms/ports/sm64";
     struct stat info;
 
     snprintf(fnamepath, sizeof(fnamepath), "%s/.sm64-port/", path);

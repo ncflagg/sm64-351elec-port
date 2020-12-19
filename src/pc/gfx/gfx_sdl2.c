@@ -1,6 +1,6 @@
 #include "../compat.h"
 
-#if (!defined(__linux__) || defined(TARGET_OD)) && !defined(__BSD__) && defined(ENABLE_OPENGL)
+#if (!defined(__linux__) || defined(TARGET_RG351)) && !defined(__BSD__) && defined(ENABLE_OPENGL)
 
 #ifdef __MINGW32__
 #define FOR_WINDOWS 1

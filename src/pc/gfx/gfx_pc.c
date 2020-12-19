@@ -719,8 +719,7 @@ static void gfx_sp_pop_matrix(uint32_t count) {
 }
 
 static float gfx_adjust_x_for_aspect_ratio(float x) {
-    //return x * (4.0f / 3.0f) / ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
-    return x;
+    return x * (4.0f / 3.0f) / ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
 }
 
 static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx *vertices) {
@@ -1804,8 +1803,7 @@ void gfx_start_frame(void) {
         // Avoid division by zero
         gfx_current_dimensions.height = 1;
     }
-    //gfx_current_dimensions.aspect_ratio = (float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height;
-    gfx_current_dimensions.aspect_ratio = (4.0f / 3.0f);
+    gfx_current_dimensions.aspect_ratio = (float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height;
     gfx_rapi->signal_start(gfx_current_dimensions.width, gfx_current_dimensions.height);
 }
 

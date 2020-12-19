@@ -1,4 +1,4 @@
-#if defined(__linux__) && !defined(TARGET_OD) 
+#if defined(__linux__) && !defined(TARGET_RG351) 
 
 #include <stdbool.h>
 #include <pthread.h>

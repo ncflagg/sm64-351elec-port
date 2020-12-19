@@ -23,7 +23,7 @@ static struct ControllerAPI *controller_implementations[] = {
 #else
     &controller_sdl,
 #endif
-#if defined(__linux__) && !defined(TARGET_OD)
+#if defined(__linux__) && !defined(TARGET_RG351)
     &controller_wup,
 #endif
     &controller_keyboard,

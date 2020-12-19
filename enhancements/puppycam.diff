@@ -2209,7 +2209,7 @@ index b57b204..53a04fc 100644
 +s16 rightstick[2];
 +
  #define DEADZONE 4960
- #ifndef TARGET_OD
+ #ifndef TARGET_RG351
  static bool init_ok;
 @@ -92,6 +94,22 @@ static void controller_sdl_read(OSContPad *pad) {
          int stick_y = -lefty / 0x100;
@@ -2233,7 +2233,7 @@ index b57b204..53a04fc 100644
 +
  }
  
- #else /* TARGET_OD */
+ #else /* TARGET_RG351 */
 @@ -149,6 +167,17 @@ static void controller_sdl_read(OSContPad *pad) {
          int stick_y = -lefty / 0x100;
          pad->stick_y = stick_y == 128 ? 127 : stick_y;
