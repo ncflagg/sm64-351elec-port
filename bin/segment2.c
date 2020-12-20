@@ -2184,10 +2184,17 @@ const Gfx dl_draw_text_bg_box[] = {
 // 0x0200EE28 - 0x0200EE68
 static const Vtx vertex_ia8_char[] = {
 #ifndef VERSION_JP
+#ifdef TARGET_RG351
+    {{{     0,      0,      0}, 0, {     0,    240}, {0xff, 0xff, 0xff, 0xff}}},
+    {{{     8,      0,      0}, 0, {     0,      0}, {0xff, 0xff, 0xff, 0xff}}},
+    {{{     8,     16,      0}, 0, {   512,      0}, {0xff, 0xff, 0xff, 0xff}}},
+    {{{     0,     16,      0}, 0, {   512,    240}, {0xff, 0xff, 0xff, 0xff}}},
+#else
     {{{     0,      0,      0}, 0, {     0,    256}, {0xff, 0xff, 0xff, 0xff}}},
     {{{     8,      0,      0}, 0, {     0,      0}, {0xff, 0xff, 0xff, 0xff}}},
     {{{     8,     16,      0}, 0, {   480,      0}, {0xff, 0xff, 0xff, 0xff}}},
     {{{     0,     16,      0}, 0, {   480,    256}, {0xff, 0xff, 0xff, 0xff}}},
+#endif
 #else
     {{{     0,      0,      0}, 0, {     0,   1024}, {0xff, 0xff, 0xff, 0xff}}},
     {{{     8,      0,      0}, 0, {   512,   1024}, {0xff, 0xff, 0xff, 0xff}}},

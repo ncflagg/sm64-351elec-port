@@ -11,7 +11,7 @@ FILE *fopen_home(const char *filename, const char *mode)
 {
 #if defined(TARGET_RG351) || defined(TARGET_LINUX)
     static char fnamepath[2048];
-    const char *path = "/storage/roms/ports/sm64";
+    const char *path = getenv("HOME");
     struct stat info;
 
     snprintf(fnamepath, sizeof(fnamepath), "%s/.sm64-port/", path);

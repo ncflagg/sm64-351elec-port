@@ -451,10 +451,10 @@ OBJCOPY := objcopy
 PYTHON := python3
 
 ifeq ($(TARGET_RG351),1)
-  OD_TOOLCHAIN ?= /opt/toolchain/
-  CC := $(OD_TOOLCHAIN)bin/aarch64-libreelec-linux-gnueabi-gcc
-  CXX := $(OD_TOOLCHAIN)bin/aarch64-libreelec-linux-gnueabi-g++
-  LD := $(OD_TOOLCHAIN)bin/aarch64-libreelec-linux-gnueabi-gcc
+  OD_TOOLCHAIN ?= /opt/aarch64-buildroot-linux-gnu_sdk-buildroot/
+  CC := $(OD_TOOLCHAIN)bin/aarch64-buildroot-linux-gnu-gcc
+  CXX := $(OD_TOOLCHAIN)bin/aarch64-buildroot-linux-gnu-g++
+  LD := $(OD_TOOLCHAIN)bin/aarch64-buildroot-linux-gnu-gcc
 endif
 
 # Platform-specific compiler and linker flags
@@ -490,9 +490,9 @@ ifeq ($(ENABLE_OPENGL),1)
     GFX_LDFLAGS += -lGL $(shell sdl2-config --libs) -lX11 -lXrandr
   endif
   ifeq ($(TARGET_RG351),1)
-    GFX_CFLAGS += $(shell $(OD_TOOLCHAIN)aarch64-libreelec-linux-gnueabi/sysroot/usr/bin/sdl2-config --cflags)
+    GFX_CFLAGS += $(shell $(OD_TOOLCHAIN)aarch64-buildroot-linux-gnu/sysroot/usr/bin/sdl2-config --cflags)
     GFX_CFLAGS += -DUSE_TEXTURE_ATLAS -DUSE_SDL=2 -DUSE_GLES2
-    GFX_LDFLAGS += $(shell $(OD_TOOLCHAIN)aarch64-libreelec-linux-gnueabi/sysroot/usr/bin/sdl2-config --libs) -lGLESv2
+    GFX_LDFLAGS += $(shell $(OD_TOOLCHAIN)aarch64-buildroot-linux-gnu/sysroot/usr/bin/sdl2-config --libs) -lGLESv2
   endif
   ifeq ($(TARGET_WEB),1)
     GFX_CFLAGS  += -s USE_SDL=2

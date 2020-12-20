@@ -11,6 +11,12 @@
 
 #include "controller_api.h"
 
+#ifdef TARGET_RG351
+
+#include "../rg351.h"
+
+#endif
+
 #define DEADZONE 4960
 #ifdef TARGET_RG351
 static bool init_ok;
@@ -55,11 +61,21 @@ static void controller_sdl_read(OSContPad *pad) {
         }
     }
 
-    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_START)) pad->button |= START_BUTTON;
+    // Warning : RG351 START button is mapped to SDL_CONTROLLER_BUTTON_BACK while SELECT button is mapped to SDL_CONTROLLER_BUTTON_START
+    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_BACK)) pad->button |= START_BUTTON;
     if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) pad->button |= Z_TRIG;
     if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) pad->button |= R_TRIG;
     if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_A)) pad->button |= A_BUTTON;
-    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_X)) pad->button |= B_BUTTON;
+    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_B)) pad->button |= B_BUTTON;
+
+    #ifdef TARGET_RG351
+
+    // Exit game by pressing SELECT + START
+    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_BACK) && SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_START)) {
+        exitGame = 1;
+    }    
+
+    #endif
 
     int16_t leftx = SDL_GameControllerGetAxis(sdl_cntrl, SDL_CONTROLLER_AXIS_LEFTX);
     int16_t lefty = SDL_GameControllerGetAxis(sdl_cntrl, SDL_CONTROLLER_AXIS_LEFTY);
