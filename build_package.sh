@@ -23,4 +23,4 @@ exit \$ret_error
 EOF
 
 # Zip the package
-zip ../sm64-351ELEC.zip ./*
+zip -r ../../sm64-351ELEC.zip ./*
