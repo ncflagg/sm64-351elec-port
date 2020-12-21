@@ -5,3 +5,4 @@ JOBS=$(($(nproc)+1))
 set -e
 
 make TARGET_RG351=1 -j$JOBS
+

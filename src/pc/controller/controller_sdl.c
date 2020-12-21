@@ -28,7 +28,7 @@ static void controller_sdl_init(void) {
         return;
     }
 
-    if (SDL_GameControllerAddMappingsFromFile("/storage/.config/SDL-GameControllerDB/gamecontrollerdb.txt") < 0) {
+    if (SDL_GameControllerAddMappingsFromFile("./controller/gamecontrollerdb.txt") < 0) {
         fprintf(stderr, "SDL mapping error: %s\n", SDL_GetError());
         return;
     }

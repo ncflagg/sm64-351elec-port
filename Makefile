@@ -279,6 +279,11 @@ endif
 # File dependencies and variables for specific files
 include Makefile.split
 
+ifeq ($(TARGET_RG351),1)
+  DUMMY := $(shell mkdir $(BUILD_DIR)/controller)
+  DUMMY := $(shell cp ./gamecontrollerdb.txt $(BUILD_DIR)/controller)
+endif
+
 # Source code files
 LEVEL_C_FILES := $(wildcard levels/*/leveldata.c) $(wildcard levels/*/script.c) $(wildcard levels/*/geo.c)
 C_FILES := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c)) $(LEVEL_C_FILES)
