@@ -15,7 +15,7 @@ touch ./sm64.sh
 cat > ./sm64.sh << EOF
 #!/usr/bin/bash
 
-./sm64/sm64.us.f3dex2e
+/storage/roms/ports/sm64/sm64.us.f3dex2e
 
 ret_error=\$?
 
