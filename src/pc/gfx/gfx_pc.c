@@ -16,50 +16,6 @@
 #include "gfx_rendering_api.h"
 #include "gfx_screen_config.h"
 
-#include "../cheapProfiler.h"
-#ifdef USE_TEXTURE_ATLAS
-#include "texture_atlas.h"
-Atlas *atlas = NULL;
-
-//  A single float is encoded as:
-//   * S.EEEEEEEE.XMMMMMMMMMMMMMMMMMMMMMM
-//   * S: 1, Sign bit, usable, but left unused.
-//   * E: 8, Exponent bits, only 6 bits are actually usable to encode data
-//           255 and 0 gives NaNs and INFs, not good.
-//   * M: 23, Mantissa bits, using the last mantissa bit causes a discontinuity
-//            when (1<<22) is set, so left unused for now.
-//            Otherwise, all other 22 bits are usable.
-//  Knowing this, we'll be packing all the texture atlas metadata in four floats,
-// in order to use only a single Vertex Attribute slot in the worst case scenario.
-//  This is also important to lower the memory space/bandwidth requirements, since
-// the metadata has to be uploaded redundantly in every vertex, since we don't
-// have glVertexAttribDivisor in OpenGL ES 2.0.
-typedef union {
-    float value;
-    struct {
-        unsigned int m: 23;
-        unsigned int e: 8; 
-        unsigned int s: 1; 
-    } fbits;
-    struct {
-        unsigned int u: 11;
-        unsigned int s: 11;
-        unsigned int padding0: 1;
-        unsigned int always_one: 1;
-        unsigned int cms: 2;
-        unsigned int padding1: 6;
-    } sampler_0;
-    struct {
-        unsigned int v: 11;
-        unsigned int t: 11;
-        unsigned int padding0: 1;
-        unsigned int always_one: 1;
-        unsigned int cmt: 2;
-        unsigned int padding1: 6;
-    } sampler_1;
-} encFloat_t;
-#endif
-
 #define SUPPORT_CHECK(x) assert(x)
 
 // SCALE_M_N: upscale/downscale M-bit integer to N-bit
@@ -78,7 +34,7 @@ typedef union {
 #define RATIO_X (gfx_current_dimensions.width / (2.0f * HALF_SCREEN_WIDTH))
 #define RATIO_Y (gfx_current_dimensions.height / (2.0f * HALF_SCREEN_HEIGHT))
 
-#define MAX_BUFFERED 2048
+#define MAX_BUFFERED 256
 #define MAX_LIGHTS 2
 #define MAX_VERTICES 64
 
@@ -105,11 +61,6 @@ struct TextureHashmapNode {
     
     uint32_t texture_id;
     uint8_t cms, cmt;
-
-#ifdef USE_TEXTURE_ATLAS
-    uint16_t x, y, width, height;
-    encFloat_t enc_sampler_params[2];
-#endif
     bool linear_filter;
 };
 static struct {
@@ -191,7 +142,6 @@ static struct RenderingState {
     bool depth_mask;
     bool decal_mode;
     bool alpha_blend;
-    bool linear_filter[2];
     struct XYWidthHeight viewport, scissor;
     struct ShaderProgram *shader_program;
     struct TextureHashmapNode *textures[2];
@@ -201,13 +151,7 @@ struct GfxDimensions gfx_current_dimensions;
 
 static bool dropped_frame;
 
-#ifndef USE_TEXTURE_ATLAS
 static float buf_vbo[MAX_BUFFERED * (26 * 3)]; // 3 vertices in a triangle and 26 floats per vtx
-#else
-//  We're also going to pack some virtual texture parameters here [see encFloat_t] 
-// so we need four extra floats.
-static float buf_vbo[MAX_BUFFERED * ((26 + 4) * 3)];
-#endif
 static size_t buf_vbo_len;
 static size_t buf_vbo_num_tris;
 
@@ -222,7 +166,6 @@ static unsigned long get_time(void) {
 }
 
 static void gfx_flush(void) {
-    ProfEmitEventStart("gfx_flush");
     if (buf_vbo_len > 0) {
         int num = buf_vbo_num_tris;
         unsigned long t0 = get_time();
@@ -234,18 +177,15 @@ static void gfx_flush(void) {
             printf("f: %d %d\n", num, (int)(t1 - t0));
         }*/
     }
-    ProfEmitEventEnd("gfx_flush");
 }
 
 static struct ShaderProgram *gfx_lookup_or_create_shader_program(uint32_t shader_id) {
-    ProfEmitEventStart("gfx_shader_program");
     struct ShaderProgram *prg = gfx_rapi->lookup_shader(shader_id);
     if (prg == NULL) {
         gfx_rapi->unload_shader(rendering_state.shader_program);
         prg = gfx_rapi->create_and_load_new_shader(shader_id);
         rendering_state.shader_program = prg;
     }
-    ProfEmitEventEnd("gfx_shader_program");
     return prg;
 }
 
@@ -319,9 +259,7 @@ static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, co
     struct TextureHashmapNode **node = &gfx_texture_cache.hashmap[hash];
     while (*node != NULL && *node - gfx_texture_cache.pool < (int)gfx_texture_cache.pool_pos) {
         if ((*node)->texture_addr == orig_addr && (*node)->fmt == fmt && (*node)->siz == siz) {
-#ifndef USE_TEXTURE_ATLAS
             gfx_rapi->select_texture(tile, (*node)->texture_id);
-#endif
             *n = *node;
             return true;
         }
@@ -334,21 +272,11 @@ static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, co
         //puts("Clearing texture cache");
     }
     *node = &gfx_texture_cache.pool[gfx_texture_cache.pool_pos++];
-#ifndef USE_TEXTURE_ATLAS
     if ((*node)->texture_addr == NULL) {
         (*node)->texture_id = gfx_rapi->new_texture();
     }
     gfx_rapi->select_texture(tile, (*node)->texture_id);
     gfx_rapi->set_sampler_parameters(tile, false, 0, 0);
-#else
-    if ((*node)->texture_addr == NULL) {
-        uint32_t virtual_id;
-        if (!atlas_gen_texture(atlas, &virtual_id))
-            abort();
-        
-        (*node)->texture_id = virtual_id;
-    }
-#endif
     (*node)->cms = 0;
     (*node)->cmt = 0;
     (*node)->linear_filter = false;
@@ -358,47 +286,6 @@ static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, co
     (*node)->siz = siz;
     *n = *node;
     return false;
-}
-
-static void import_texture_finish(uint8_t *buf, int tile, uint16_t width, uint16_t height)
-{
-    ProfEmitEventEnd("import_texture_xxx");
-#ifndef USE_TEXTURE_ATLAS
-    gfx_rapi->upload_texture(buf, width, height);
-#else
-    // Deal with failure gracefully - maybe invalidate a few textures for more space
-    uint32_t v_id = rendering_state.textures[tile]->texture_id;
-
-    int h_mirror = rdp.texture_tile.cms == G_TX_MIRROR;
-    int v_mirror = rdp.texture_tile.cmt == G_TX_MIRROR;
-
-    // Allocate enough memory for the mirrored set. This allows us to simplify
-    // the fragment shader texture fetches a little.
-    if (!atlas_allocate_vtex_space(atlas, v_id, 
-        !h_mirror ? width : width*2, !v_mirror ? height : height * 2))
-        abort();
-
-    uint16_t xyzw[4];
-    if (!atlas_get_vtex_xywh_coords(atlas, v_id, 0, &xyzw))
-        abort();
-
-    gfx_rapi->upload_virtual_texture(buf, xyzw[0], xyzw[1], width, height, h_mirror, v_mirror);
-    rendering_state.textures[tile]->x = xyzw[0];
-    rendering_state.textures[tile]->y = xyzw[1];
-    rendering_state.textures[tile]->width = width;
-    rendering_state.textures[tile]->height = height;
-
-    encFloat_t *sampler_params = &rendering_state.textures[tile]->enc_sampler_params[0];
-    sampler_params[0].sampler_0.u = rendering_state.textures[tile]->x;
-    sampler_params[0].sampler_0.s = rendering_state.textures[tile]->width;
-    sampler_params[0].sampler_0.always_one = 1; // DON'T REMOVE ME
-    sampler_params[0].sampler_0.cms = rdp.texture_tile.cms;
-
-    sampler_params[1].sampler_1.v = rendering_state.textures[tile]->y;
-    sampler_params[1].sampler_1.t = rendering_state.textures[tile]->height;
-    sampler_params[1].sampler_1.always_one = 1; // DON'T REMOVE ME
-    sampler_params[1].sampler_1.cmt = rdp.texture_tile.cmt;
-#endif
 }
 
 static void import_texture_rgba16(int tile) {
@@ -418,15 +305,14 @@ static void import_texture_rgba16(int tile) {
     
     uint32_t width = rdp.texture_tile.line_size_bytes / 2;
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
-        
-    import_texture_finish(rgba32_buf, tile, width, height);
+    
+    gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
 static void import_texture_rgba32(int tile) {
     uint32_t width = rdp.texture_tile.line_size_bytes / 2;
     uint32_t height = (rdp.loaded_texture[tile].size_bytes / 2) / rdp.texture_tile.line_size_bytes;
-
-    import_texture_finish(rdp.loaded_texture[tile].addr, tile, width, height);
+    gfx_rapi->upload_texture(rdp.loaded_texture[tile].addr, width, height);
 }
 
 static void import_texture_ia4(int tile) {
@@ -448,8 +334,8 @@ static void import_texture_ia4(int tile) {
     
     uint32_t width = rdp.texture_tile.line_size_bytes * 2;
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
-        
-    import_texture_finish(rgba32_buf, tile, width, height);
+    
+    gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
 static void import_texture_ia8(int tile) {
@@ -469,8 +355,8 @@ static void import_texture_ia8(int tile) {
     
     uint32_t width = rdp.texture_tile.line_size_bytes;
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
-        
-    import_texture_finish(rgba32_buf, tile, width, height);
+    
+    gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
 static void import_texture_ia16(int tile) {
@@ -490,8 +376,8 @@ static void import_texture_ia16(int tile) {
     
     uint32_t width = rdp.texture_tile.line_size_bytes / 2;
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
-        
-    import_texture_finish(rgba32_buf, tile, width, height);
+    
+    gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
 static void import_texture_i4(int tile) {
@@ -512,8 +398,8 @@ static void import_texture_i4(int tile) {
 
     uint32_t width = rdp.texture_tile.line_size_bytes * 2;
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
-        
-    import_texture_finish(rgba32_buf, tile, width, height);
+
+    gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
 static void import_texture_i8(int tile) {
@@ -532,8 +418,8 @@ static void import_texture_i8(int tile) {
 
     uint32_t width = rdp.texture_tile.line_size_bytes;
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
-        
-    import_texture_finish(rgba32_buf, tile, width, height);
+
+    gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
 
@@ -556,8 +442,8 @@ static void import_texture_ci4(int tile) {
     
     uint32_t width = rdp.texture_tile.line_size_bytes * 2;
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
-        
-    import_texture_finish(rgba32_buf, tile, width, height);
+    
+    gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
 static void import_texture_ci8(int tile) {
@@ -578,8 +464,8 @@ static void import_texture_ci8(int tile) {
     
     uint32_t width = rdp.texture_tile.line_size_bytes;
     uint32_t height = rdp.loaded_texture[tile].size_bytes / rdp.texture_tile.line_size_bytes;
-
-    import_texture_finish(rgba32_buf, tile, width, height);
+    
+    gfx_rapi->upload_texture(rgba32_buf, width, height);
 }
 
 static void import_texture(int tile) {
@@ -590,7 +476,6 @@ static void import_texture(int tile) {
         return;
     }
     
-    ProfEmitEventStart("import_texture_xxx");
     int t0 = get_time();
     if (fmt == G_IM_FMT_RGBA) {
         if (siz == G_IM_SIZ_16b) {
@@ -941,27 +826,14 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
     for (int i = 0; i < 2; i++) {
         if (used_textures[i]) {
             if (rdp.textures_changed[i]) {
-#ifndef USE_TEXTURE_ATLAS
                 gfx_flush();
-#endif
                 import_texture(i);
                 rdp.textures_changed[i] = false;
             }
             bool linear_filter = (rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT;
-
-#ifdef USE_TEXTURE_ATLAS
-            if (rendering_state.linear_filter[i] != linear_filter) {
-                gfx_flush();
-                gfx_rapi->set_sampler_parameters(i, linear_filter, rdp.texture_tile.cms, rdp.texture_tile.cmt);
-                rendering_state.linear_filter[i] = linear_filter;
-            }
-#endif
-
             if (linear_filter != rendering_state.textures[i]->linear_filter || rdp.texture_tile.cms != rendering_state.textures[i]->cms || rdp.texture_tile.cmt != rendering_state.textures[i]->cmt) {
-#ifndef USE_TEXTURE_ATLAS
                 gfx_flush();
                 gfx_rapi->set_sampler_parameters(i, linear_filter, rdp.texture_tile.cms, rdp.texture_tile.cmt);
-#endif
                 rendering_state.textures[i]->linear_filter = linear_filter;
                 rendering_state.textures[i]->cms = rdp.texture_tile.cms;
                 rendering_state.textures[i]->cmt = rdp.texture_tile.cmt;
@@ -995,14 +867,6 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
             }
             buf_vbo[buf_vbo_len++] = u / tex_width;
             buf_vbo[buf_vbo_len++] = v / tex_height;
-#ifdef USE_TEXTURE_ATLAS
-            for (int j = 0; j < 2; j++) {
-                if (used_textures[j]) {
-                    buf_vbo[buf_vbo_len++] = rendering_state.textures[j]->enc_sampler_params[0].value;
-                    buf_vbo[buf_vbo_len++] = rendering_state.textures[j]->enc_sampler_params[1].value;
-                }
-            }
-#endif
         }
         
         if (use_fog) {
@@ -1061,7 +925,6 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
         buf_vbo[buf_vbo_len++] = color->a / 255.0f;*/
     }
     if (++buf_vbo_num_tris == MAX_BUFFERED) {
-        printf("Vertex buffer overflow!\n");
         gfx_flush();
     }
 }
@@ -1750,13 +1613,6 @@ void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, co
     gfx_rapi = rapi;
     gfx_wapi->init(game_name, start_in_fullscreen);
     gfx_rapi->init();
-
-#ifdef USE_TEXTURE_ATLAS
-    if (!atlas_create(&atlas, 2048, 1))
-        abort();
-
-    gfx_rapi->create_virtual_texture_page(2048);
-#endif
     
     // Used in the 120 star TAS
     static uint32_t precomp_shaders[] = {
@@ -1804,7 +1660,6 @@ void gfx_start_frame(void) {
         gfx_current_dimensions.height = 1;
     }
     gfx_current_dimensions.aspect_ratio = (float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height;
-    gfx_rapi->signal_start(gfx_current_dimensions.width, gfx_current_dimensions.height);
 }
 
 void gfx_run(Gfx *commands) {
@@ -1818,12 +1673,8 @@ void gfx_run(Gfx *commands) {
     }
     dropped_frame = false;
     
-    rendering_state.shader_program = NULL;
     double t0 = gfx_wapi->get_time();
     gfx_rapi->start_frame();
-    #ifdef USE_TEXTURE_ATLAS
-    gfx_rapi->bind_virtual_texture_page();
-    #endif
     gfx_run_dl(commands);
     gfx_flush();
     double t1 = gfx_wapi->get_time();
