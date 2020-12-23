@@ -28,10 +28,19 @@ static void controller_sdl_init(void) {
         return;
     }
 
-    if (SDL_GameControllerAddMappingsFromFile("/storage/.config/SDL-GameControllerDB/gamecontrollerdb.txt") < 0) {
-        fprintf(stderr, "SDL mapping error: %s\n", SDL_GetError());
-        return;
-    }
+    #ifdef TARGET_ELEC
+        if (SDL_GameControllerAddMappingsFromFile("/storage/roms/ports/sm64/controller/gamecontrollerdb.txt") < 0) {
+            fprintf(stderr, "SDL mapping error: %s\n", SDL_GetError());
+            return;
+        }
+    #endif
+
+    #ifdef TARGET_ARK
+        if (SDL_GameControllerAddMappingsFromFile("/roms/ports/sm64/controller/gamecontrollerdb.txt") < 0) {
+            fprintf(stderr, "SDL mapping error: %s\n", SDL_GetError());
+            return;
+        }
+    #endif
 
     init_ok = true;
 }

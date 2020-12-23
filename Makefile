@@ -21,8 +21,11 @@ NON_MATCHING ?= 0
 TARGET_N64 ?= 0
 # Build for Emscripten/WebGL
 TARGET_WEB ?= 0
-# Build for RG351
+# Build for RG351 (ArkOS or 351ELEC)
 TARGET_RG351 ?= 1
+TARGET_ARK ?= 0
+TARGET_ELEC ?= 0
+
 # Use profiler or not
 USE_PROFILER ?= 0
 # Compiler to use (ido or gcc)
@@ -470,7 +473,13 @@ ifeq ($(TARGET_LINUX),1)
   PLATFORM_LDFLAGS := -lm -lpthread `pkg-config --libs libusb-1.0` -lasound -lpulse -no-pie
 endif
 ifeq ($(TARGET_RG351),1)
-  PLATFORM_CFLAGS  := -DTARGET_RG351
+  PLATFORM_CFLAGS  := -DTARGET_RG351 
+  ifeq ($(TARGET_ELEC),1)
+    PLATFORM_CFLAGS += -DTARGET_ELEC
+  endif
+  ifeq ($(TARGET_ARK),1)
+    PLATFORM_CFLAGS += -DTARGET_ARK
+  endif
   PLATFORM_LDFLAGS := -lm -lpthread -lasound -no-pie
 endif
 ifeq ($(TARGET_WEB),1)
