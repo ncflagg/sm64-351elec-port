@@ -15,6 +15,7 @@ enum ConfigOptionType {
     CONFIG_TYPE_BOOL,
     CONFIG_TYPE_UINT,
     CONFIG_TYPE_FLOAT,
+    CONFIG_TYPE_STRING,
 };
 
 struct ConfigOption {
@@ -24,6 +25,7 @@ struct ConfigOption {
         bool *boolValue;
         unsigned int *uintValue;
         float *floatValue;
+        char **stringValue;
     };
 };
 
@@ -61,6 +63,11 @@ unsigned int configKeyStickUp    = 0x0200;
 unsigned int configKeyStickDown  = 0x0200;
 unsigned int configKeyStickLeft  = 0x0200;
 unsigned int configKeyStickRight = 0x0200;
+char *buttonA       = "A";
+char *buttonB       = "B";
+char *buttonStart   = "START";
+char *buttonR       = "R1";
+char *buttonZ       = "L1";
 #endif
 
 
@@ -79,6 +86,11 @@ static const struct ConfigOption options[] = {
     {.name = "key_stickdown",  .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickDown},
     {.name = "key_stickleft",  .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickLeft},
     {.name = "key_stickright", .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickRight},
+    {.name = "button_a",       .type = CONFIG_TYPE_STRING, .stringValue = &buttonA},
+    {.name = "button_b",       .type = CONFIG_TYPE_STRING, .stringValue = &buttonB},
+    {.name = "button_start",   .type = CONFIG_TYPE_STRING, .stringValue = &buttonStart},
+    {.name = "button_r",       .type = CONFIG_TYPE_STRING, .stringValue = &buttonR},
+    {.name = "button_z",       .type = CONFIG_TYPE_STRING, .stringValue = &buttonZ},
 };
 
 // Reads an entire line from a file (excluding the newline character) and returns an allocated string
@@ -193,6 +205,7 @@ void configfile_load(const char *filename) {
                 if (option == NULL)
                     printf("unknown option '%s'\n", tokens[0]);
                 else {
+                    char* stringParam;
                     switch (option->type) {
                         case CONFIG_TYPE_BOOL:
                             if (strcmp(tokens[1], "true") == 0)
@@ -205,6 +218,11 @@ void configfile_load(const char *filename) {
                             break;
                         case CONFIG_TYPE_FLOAT:
                             sscanf(tokens[1], "%f", option->floatValue);
+                            break;
+                        case CONFIG_TYPE_STRING:
+                            stringParam = malloc(6*sizeof(char));
+                            sscanf(tokens[1], "%s", stringParam);
+                            *option->stringValue = stringParam;
                             break;
                         default:
                             assert(0); // bad type
@@ -244,6 +262,9 @@ void configfile_save(const char *filename) {
                 break;
             case CONFIG_TYPE_FLOAT:
                 fprintf(file, "%s %f\n", option->name, *option->floatValue);
+                break;
+            case CONFIG_TYPE_STRING:
+                fprintf(file, "%s %s\n", option->name, *option->stringValue);
                 break;
             default:
                 assert(0); // unknown type

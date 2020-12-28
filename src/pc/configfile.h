@@ -15,6 +15,11 @@ extern unsigned int configKeyStickUp;
 extern unsigned int configKeyStickDown;
 extern unsigned int configKeyStickLeft;
 extern unsigned int configKeyStickRight;
+extern char *buttonA;
+extern char *buttonB;
+extern char *buttonStart;
+extern char *buttonR;
+extern char *buttonZ;
 
 void configfile_load(const char *filename);
 void configfile_save(const char *filename);
