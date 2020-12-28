@@ -112,17 +112,17 @@ index 22ab70c..cf566a1 100644
  
  /** A node that allows an object to specify a different culling radius than the
 diff --git a/src/engine/surface_collision.c b/src/engine/surface_collision.c
-index 69f40c9..9118d88 100644
+index 69f40c9..7bb8c04 100644
 --- a/src/engine/surface_collision.c
 +++ b/src/engine/surface_collision.c
-@@ -7,6 +7,7 @@
+@@ -5,6 +5,7 @@
+ #include "game/level_update.h"
+ #include "game/mario.h"
  #include "game/object_list_processor.h"
++#include "game/game_init.h"
  #include "surface_collision.h"
  #include "surface_load.h"
-+#include "game/game_init.h"
  
- /**************************************************
-  *                      WALLS                     *
 @@ -393,26 +394,44 @@ f32 find_floor_height_and_data(f32 xPos, f32 yPos, f32 zPos, struct FloorGeometr
      return floorHeight;
  }
