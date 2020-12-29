@@ -1,6 +1,6 @@
-From 62aa113ce62b87465819b74036c85f6577ab5f30 Mon Sep 17 00:00:00 2001
+From 972ac6b73d164492c117147bbad5f1b583abe8da Mon Sep 17 00:00:00 2001
 From: Adrien Lombard <adrilomb@gmail.com>
-Date: Mon, 28 Dec 2020 11:02:45 +0100
+Date: Tue, 29 Dec 2020 19:37:51 +0100
 Subject: [PATCH] Puppycam patch
 
 ---
@@ -24,13 +24,13 @@ Subject: [PATCH] Puppycam patch
  src/game/mario_misc.c                 |   46 +-
  src/game/save_file.c                  |   49 +-
  src/game/save_file.h                  |   34 +-
- src/pc/configfile.c                   |   18 +
+ src/pc/configfile.c                   |   17 +
  src/pc/configfile.h                   |    8 +
  src/pc/controller/controller_sdl.c    |   28 +
  src/pc/controller/controller_sdl.h    |    1 +
  src/pc/controller/controller_xinput.c |   16 +
  src/pc/controller/controller_xinput.h |    1 +
- 26 files changed, 1741 insertions(+), 28 deletions(-)
+ 26 files changed, 1740 insertions(+), 28 deletions(-)
  create mode 100644 enhancements/puppycam.h
  create mode 100644 enhancements/puppycam.inc.c
  create mode 100644 enhancements/puppycam_angles.inc.c
@@ -2192,11 +2192,11 @@ index ae6fcf3..72aa2ef 100644
  void disable_warp_checkpoint(void);
  void check_if_should_set_warp_checkpoint(struct WarpNode *warpNode);
 diff --git a/src/pc/configfile.c b/src/pc/configfile.c
-index a7e24ee..73a97f4 100644
+index 4f06827..15f60a1 100644
 --- a/src/pc/configfile.c
 +++ b/src/pc/configfile.c
-@@ -63,6 +63,15 @@ unsigned int configKeyStickLeft  = 0x0200;
- unsigned int configKeyStickRight = 0x0200;
+@@ -70,6 +70,15 @@ char *buttonR       = "R1";
+ char *buttonZ       = "L1";
  #endif
  
 +unsigned int puppycam_sensitivityX = 100;
@@ -2211,10 +2211,10 @@ index a7e24ee..73a97f4 100644
  
  static const struct ConfigOption options[] = {
      {.name = "fullscreen",     .type = CONFIG_TYPE_BOOL, .boolValue = &configFullscreen},
-@@ -79,6 +88,15 @@ static const struct ConfigOption options[] = {
-     {.name = "key_stickdown",  .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickDown},
-     {.name = "key_stickleft",  .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickLeft},
-     {.name = "key_stickright", .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickRight},
+@@ -91,6 +100,14 @@ static const struct ConfigOption options[] = {
+     {.name = "button_start",   .type = CONFIG_TYPE_STRING, .stringValue = &buttonStart},
+     {.name = "button_r",       .type = CONFIG_TYPE_STRING, .stringValue = &buttonR},
+     {.name = "button_z",       .type = CONFIG_TYPE_STRING, .stringValue = &buttonZ},
 +    {.name = "puppycam_sensitivity_x", .type = CONFIG_TYPE_UINT, .uintValue = &puppycam_sensitivityX},
 +    {.name = "puppycam_sensitivity_y", .type = CONFIG_TYPE_UINT, .uintValue = &puppycam_sensitivityY},
 +    {.name = "puppycam_invert_x", .type = CONFIG_TYPE_UINT, .uintValue = &puppycam_invertX},
@@ -2223,17 +2223,16 @@ index a7e24ee..73a97f4 100644
 +    {.name = "puppycam_centre_aggression", .type = CONFIG_TYPE_UINT, .uintValue = &puppycam_aggression},
 +    {.name = "puppycam_pan_amount", .type = CONFIG_TYPE_UINT, .uintValue = &puppycam_panlevel},
 +
-+
  };
  
  // Reads an entire line from a file (excluding the newline character) and returns an allocated string
 diff --git a/src/pc/configfile.h b/src/pc/configfile.h
-index ae9070b..514202d 100644
+index 4663422..18a7d65 100644
 --- a/src/pc/configfile.h
 +++ b/src/pc/configfile.h
-@@ -16,6 +16,14 @@ extern unsigned int configKeyStickDown;
- extern unsigned int configKeyStickLeft;
- extern unsigned int configKeyStickRight;
+@@ -21,6 +21,14 @@ extern char *buttonStart;
+ extern char *buttonR;
+ extern char *buttonZ;
  
 +extern unsigned int puppycam_sensitivityX;
 +extern unsigned int puppycam_sensitivityY;
@@ -2247,10 +2246,10 @@ index ae9070b..514202d 100644
  void configfile_save(const char *filename);
  
 diff --git a/src/pc/controller/controller_sdl.c b/src/pc/controller/controller_sdl.c
-index 674652c..344e56f 100644
+index b36ad1e..d75c16b 100644
 --- a/src/pc/controller/controller_sdl.c
 +++ b/src/pc/controller/controller_sdl.c
-@@ -17,6 +17,7 @@
+@@ -19,6 +19,7 @@
  
  #endif
  
@@ -2258,7 +2257,7 @@ index 674652c..344e56f 100644
  #define DEADZONE 4960
  #ifdef TARGET_RG351
  static bool init_ok;
-@@ -122,6 +123,22 @@ static void controller_sdl_read(OSContPad *pad) {
+@@ -170,6 +171,22 @@ static void controller_sdl_read(OSContPad *pad) {
          int stick_y = -lefty / 0x100;
          pad->stick_y = stick_y == 128 ? 127 : stick_y;
      }
@@ -2281,7 +2280,7 @@ index 674652c..344e56f 100644
  }
  
  #else /* TARGET_RG351 */
-@@ -187,6 +204,17 @@ static void controller_sdl_read(OSContPad *pad) {
+@@ -235,6 +252,17 @@ static void controller_sdl_read(OSContPad *pad) {
          int stick_y = -lefty / 0x100;
          pad->stick_y = stick_y == 128 ? 127 : stick_y;
      }
