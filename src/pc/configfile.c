@@ -175,7 +175,7 @@ void configfile_load(const char *filename) {
 
     printf("Loading configuration from '%s'\n", filename);
 
-    file = fopen_home(filename, "r");
+    file = fopen_conf(filename, "r");
     if (file == NULL) {
         // Create a new config file and save defaults
         printf("Config file '%s' not found. Creating it.\n", filename);
@@ -244,7 +244,7 @@ void configfile_save(const char *filename) {
 
     printf("Saving configuration to '%s'\n", filename);
 
-    file = fopen_home(filename, "w");
+    file = fopen_conf(filename, "w");
     if (file == NULL) {
         // error
         return;

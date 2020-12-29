@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <libgen.h>
 
 #ifdef TARGET_WEB
 #include <emscripten.h>
@@ -36,7 +37,10 @@
 #ifdef TARGET_RG351
 
 #include "rg351.h"
+#include "fsutils.h"
+
 unsigned int exitGame = 0;
+char* exePath;
 
 #endif
 
@@ -300,6 +304,7 @@ int WINAPI WinMain(UNUSED HINSTANCE hInstance, UNUSED HINSTANCE hPrevInstance, U
 }
 #else
 int main(UNUSED int argc, UNUSED char *argv[]) {
+    exePath = dirname(argv[0]);
     main_func();
     return 0;
 }
