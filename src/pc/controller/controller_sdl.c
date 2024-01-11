@@ -78,7 +78,7 @@ SDL_GameControllerButton getConfiguredButton(char *configuredButton) {
     }
 
     if(strequals(configuredButton, "START")) {
-        returnValue = SDL_CONTROLLER_BUTTON_BACK;
+        returnValue = SDL_CONTROLLER_BUTTON_START;
     }
 
     if(strequals(configuredButton, "L1")) {
