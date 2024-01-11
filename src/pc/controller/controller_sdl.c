@@ -118,8 +118,8 @@ static void controller_sdl_read(OSContPad *pad) {
         }
     }
 
-    // Warning : RG351 START button is mapped to SDL_CONTROLLER_BUTTON_BACK while SELECT button is mapped to SDL_CONTROLLER_BUTTON_START
-    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_BACK)) pad->button |= START_BUTTON;
+    // Reverting RG351 Back, Start button swap for R36S
+    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_START)) pad->button |= START_BUTTON;
     if (SDL_GameControllerGetButton(sdl_cntrl, getConfiguredButton(buttonZ))) pad->button |= Z_TRIG;
     if (SDL_GameControllerGetButton(sdl_cntrl, getConfiguredButton(buttonR))) pad->button |= R_TRIG;
     if (SDL_GameControllerGetButton(sdl_cntrl, getConfiguredButton(buttonA))) pad->button |= A_BUTTON;
