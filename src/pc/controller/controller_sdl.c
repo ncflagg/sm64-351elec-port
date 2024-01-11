@@ -61,24 +61,24 @@ SDL_GameControllerButton getConfiguredButton(char *configuredButton) {
 
     SDL_GameControllerButton returnValue;
 
-    if(strequals(configuredButton, "B")) {
-        returnValue = SDL_CONTROLLER_BUTTON_Y;
+    if(strequals(configuredButton, "A")) {
+        returnValue = SDL_CONTROLLER_BUTTON_A;
     }
 
-    if(strequals(configuredButton, "Y")) {
-        returnValue = SDL_CONTROLLER_BUTTON_A;
+    if(strequals(configuredButton, "B")) {
+        returnValue = SDL_CONTROLLER_BUTTON_B;
     }
 
     if(strequals(configuredButton, "X")) {
         returnValue = SDL_CONTROLLER_BUTTON_X;
     }
 
-    if(strequals(configuredButton, "A")) {
-        returnValue = SDL_CONTROLLER_BUTTON_B;
+    if(strequals(configuredButton, "Y")) {
+        returnValue = SDL_CONTROLLER_BUTTON_Y;
     }
 
     if(strequals(configuredButton, "START")) {
-        returnValue = SDL_CONTROLLER_BUTTON_START;
+        returnValue = SDL_CONTROLLER_BUTTON_BACK;
     }
 
     if(strequals(configuredButton, "L1")) {
@@ -119,7 +119,7 @@ static void controller_sdl_read(OSContPad *pad) {
     }
 
     // Warning : RG351 START button is mapped to SDL_CONTROLLER_BUTTON_BACK while SELECT button is mapped to SDL_CONTROLLER_BUTTON_START
-    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_START)) pad->button |= START_BUTTON;
+    if (SDL_GameControllerGetButton(sdl_cntrl, SDL_CONTROLLER_BUTTON_BACK)) pad->button |= START_BUTTON;
     if (SDL_GameControllerGetButton(sdl_cntrl, getConfiguredButton(buttonZ))) pad->button |= Z_TRIG;
     if (SDL_GameControllerGetButton(sdl_cntrl, getConfiguredButton(buttonR))) pad->button |= R_TRIG;
     if (SDL_GameControllerGetButton(sdl_cntrl, getConfiguredButton(buttonA))) pad->button |= A_BUTTON;
